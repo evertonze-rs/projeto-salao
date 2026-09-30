@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env*
+private/
+
+tests/.ui-runtime.mjs

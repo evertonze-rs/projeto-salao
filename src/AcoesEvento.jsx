@@ -1,0 +1,11 @@
+import React,{useState} from 'react';
+export default function AcoesEvento({db,evento,onUpdate,onDeleted}){
+ const [action,A]=useState(''),[busy,B]=useState(false),[error,E]=useState('');
+ async function submit(e){e.preventDefault();const f=new FormData(e.currentTarget);B(true);E('');try{
+  if(action==='cancelar'){
+   const motivo=f.get('justificativa').trim();if(!motivo){E('Preencha a justificativa.');return}
+   const {data,error}=await db.from('eventos').update({status:'cancelado',cancelamento_justificativa:motivo}).eq('id',evento.id).select().single();if(error)throw error;onUpdate(data);A('');
+  }else{const {error}=await db.rpc('excluir_evento',{evento_alvo:evento.id});if(error)throw error;onDeleted(evento.id)}
+ }catch{E('Não foi possível concluir. Confira a conexão, suas permissões e se a atualização 004 foi aplicada.')}finally{B(false)}}
+ return <section className="card event-actions"><h2>Gerenciar evento</h2>{!action?<div className="actions">{evento.status!=='cancelado'&&<button type="button" className="back" onClick={()=>A('cancelar')}>Cancelar evento</button>}<button type="button" className="danger" onClick={()=>A('excluir')}>Excluir evento</button></div>:<form onSubmit={submit}><fieldset disabled={busy}><h3>{action==='cancelar'?'Cancelar evento':'Excluir definitivamente'}</h3>{action==='cancelar'?<><p>O evento continuará no histórico, identificado como cancelado. Os pagamentos serão preservados.</p><label>Justificativa do cancelamento<textarea name="justificativa" required maxLength={2000} rows={3}/></label></>:<><p>Serão apagados o evento <strong>{evento.cliente}</strong>, seus serviços, pagamentos e tarefas. Esta ação não pode ser desfeita.</p><label className="task"><input type="checkbox" required/><span>Confirmo a exclusão deste evento e dos registros vinculados.</span></label></>}<div className="actions"><button className={action==='excluir'?'danger':''}>{busy?'Processando…':action==='cancelar'?'Confirmar cancelamento':'Excluir definitivamente'}</button><button type="button" className="back" onClick={()=>{A('');E('')}}>Voltar</button></div></fieldset></form>}{error&&<p role="alert" className="error">{error}</p>}</section>;
+}
