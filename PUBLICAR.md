@@ -21,7 +21,7 @@ npm run build
 python scripts/empacotar_site.py
 ```
 
-O pacote atualizado da versão 0.6.1 será `private/publicacao/gestao-eventos-site.zip`. Contém **apenas dist**, com `index.html` na raiz. Para atualizar o site, gere um pacote novo. Não envie a pasta inteira do projeto, `.env.local`, `private` ou as planilhas.
+O pacote atualizado da versão 0.7.0 será `private/publicacao/gestao-eventos-site.zip`. Contém **apenas dist**, com `index.html` na raiz. Para atualizar o site, gere um pacote novo. Não envie a pasta inteira do projeto, `.env.local`, `private` ou as planilhas.
 
 ## 3. Hospedar no Cloudflare Pages
 
@@ -88,3 +88,5 @@ GitHub: branch master publica automaticamente no projeto Pages conectado. Migra�
 Atualização 0.6.0: executar `supabase/016_slogan_salao.sql` após 015. Em Configurações → Salões → Salões, preencher o slogan opcional. Ele aparece abaixo do nome nos documentos; vazio não ocupa espaço adicional.
 
 Atualização 0.6.1: modelos em português em `supabase/email-templates`. Aplicar manualmente os assuntos e HTML conforme `LEIA-ME.md`. Corrigir Site URL e Redirect URLs antes de solicitar um novo e-mail de recuperação.
+
+Backup preparado na versão 0.7.0: seguir BACKUP.md. O workflow está desativado até configurar secrets e BACKUP_ENABLED. É necessário executar e validar a primeira cópia e o ensaio de restauração; esses passos não foram concluídos automaticamente.

@@ -1,0 +1,36 @@
+name: Backup criptografado do banco
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: backup-producao
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: vars.BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Instalar dependência de criptografia
+        run: python -m pip install -r scripts/backup/requirements.txt
+      - name: Exportar e criptografar
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: python scripts/backup/export.py
+      - name: Guardar somente a cópia criptografada
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backup-${{ github.run_id }}
+          path: |
+            private/backups/*.exxbackup
+            private/backups/*.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

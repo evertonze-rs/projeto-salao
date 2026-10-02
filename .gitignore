@@ -9,3 +9,6 @@ tests/.ui-runtime.mjs
 scripts/gerar_importacao.py
 scripts/previa_importacao.py
 scripts/testar_importacao.mjs
+
+__pycache__/
+*.exxbackup

@@ -1,3 +1,10 @@
+## 0.7.0 — 02/10/2026
+
+- Preparada rotina de backup lógico via Supabase CLI no GitHub Actions, desativada por padrão, com agendamento diário e retenção de sete dias.
+- Arquivos protegidos com AES-256-GCM e chave derivada da senha por PBKDF2; manifestos e hashes para conferência local. Não há upload de dumps abertos.
+- Ferramenta de descriptografia local e roteiro de restauração isolada em BACKUP.md.
+- Cinco testes de criptografia e integridade passaram. Exportação real e restauração ainda pendentes de conexão/configuração; não considerar a rotina ativa antes da primeira execução validada.
+
 ## 0.6.1 — 02/10/2026
 
 - Modelos de e-mails de autenticação em português com identidade ExxEventos, tabelas e estilos inline compatíveis com clientes de e-mail.
