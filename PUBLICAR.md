@@ -21,7 +21,7 @@ npm run build
 python scripts/empacotar_site.py
 ```
 
-O pacote atualizado da versão 0.4.3 será `private/publicacao/gestao-eventos-site.zip`. Contém **apenas dist**, com `index.html` na raiz. Para atualizar o site, gere um pacote novo. Não envie a pasta inteira do projeto, `.env.local`, `private` ou as planilhas.
+O pacote atualizado da versão 0.5.0 será `private/publicacao/gestao-eventos-site.zip`. Contém **apenas dist**, com `index.html` na raiz. Para atualizar o site, gere um pacote novo. Não envie a pasta inteira do projeto, `.env.local`, `private` ou as planilhas.
 
 ## 3. Hospedar no Cloudflare Pages
 
@@ -74,3 +74,13 @@ O caminho direto oficial é https://dash.cloudflare.com/?to=/:account/workers-an
 Logs: Configurações → Aplicativo → Logs. Administradores veem alterações dos salões autorizados; logs de configurações gerais exigem administração de todos os salões. O usuário que usa o aplicativo é identificado pelo UUID e e-mail, além do nome. SQL executado no painel sem sessão do aplicativo aparece como Sistema / SQL. Fotos e logos são resumidos no log; senhas não são armazenadas nele. O histórico começa na aplicação da atualização 013. Administradores do banco continuam tecnicamente capazes de alterar tabelas; a proteção contra exclusão/edição dos logs aplica-se aos usuários do aplicativo. Para produção, definir rotina de backup e retenção de logs conforme volume e necessidades da empresa.
 
 Atualização 0.4.1: aplicar `supabase/014_nome_cadastrado.sql` depois de 013 para priorizar o nome cadastrado em Usuários. Recarregue o aplicativo após executar. Os cadastros abrem por botão e a edição ocorre na própria linha.
+
+## Atualização 0.5.0 — usuários e recuperação de senha
+
+1. Aplicar `supabase/015_usuarios_evento.sql` após 014. O arquivo instala as funções; não exclui usuários durante a migração.
+2. Em Authentication → URL Configuration, manter Site URL `https://exxeventos.pages.dev` e adicionar em Redirect URLs o endereço exato `https://exxeventos.pages.dev/?recuperar=1`. Manter também a URL da raiz para confirmação de cadastro. Para testar localmente, adicionar a URL equivalente do ambiente local.
+3. Com SMTP configurado, usar Esqueci minha senha em uma conta de teste; conferir recebimento, troca da senha pelo link e novo login. O formulário não exige a senha antiga. Links inválidos ou expirados permitem voltar e solicitar outro.
+4. Excluir usuário exige confirmação: remove vínculos e conta de autenticação, preservando eventos e logs. Para recadastrar, primeiro autorizar novamente; o cliente usa Primeiro acesso para definir uma senha. A exclusão em auth.users depende das relações do Supabase Auth; se outro recurso futuro criar dependências, a transação falha integralmente, sem remoção parcial. Contas excluídas perdem os vínculos usados nas políticas mesmo com token anterior ainda dentro da validade.
+5. Em Editar evento, Criar acesso salva o evento e autoriza o e-mail em uma transação. E-mail já vinculado exige gerenciamento em Usuários; conflitos mantêm o formulário e não gravam parcialmente.
+
+GitHub: branch master publica automaticamente no projeto Pages conectado. Migrações SQL não são executadas pelo build.

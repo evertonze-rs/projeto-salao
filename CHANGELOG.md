@@ -1,3 +1,11 @@
+## 0.5.0 — 02/10/2026
+
+- Exclusão confirmada de usuários e autorizações, restrita a administradores de todos os vínculos do alvo e bloqueada para a própria conta. Preserva eventos, pagamentos e logs.
+- Esqueci minha senha envia link pelo SMTP configurado. Link abre tela dedicada para definir e confirmar nova senha; inclui tratamento de link inválido e encerramento local da sessão ao concluir.
+- Edição do evento permite criar acesso do cliente pelo e-mail, com salvamento atômico e validade até o dia seguinte à festa.
+- Banco: executar 015 após 014. Auth: permitir a URL `https://exxeventos.pages.dev/?recuperar=1`.
+- Validação local: 47 testes, incluindo isolamento por salão, exclusão, preservação dos eventos e recuperação de senha. Envio real de e-mail depende do SMTP e precisa ser conferido no ambiente publicado.
+
 ## 0.4.3 — 02/10/2026
 
 - Identificação do cliente com fundo claro e contraste independente do tema.

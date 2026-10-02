@@ -60,3 +60,5 @@ fieldset{border:0;padding:0;margin:0;min-width:0}textarea{font:inherit;width:100
 .client-account-toolbar button:focus-visible{outline:3px solid var(--deep,#173e38);outline-offset:3px}
 .profile-security{border-top:1px solid #dce3df;padding-top:20px;margin-top:20px}
 @media(max-width:380px){.client-account-toolbar{gap:8px}.client-refresh>span:last-child{display:none}.app.client-portal .client-refresh{min-width:44px}}
+
+.user-delete-confirm{flex:0 0 100%;padding:16px;border:1px solid #a3372c;border-radius:10px;background:#fff7f5}.login-help{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}

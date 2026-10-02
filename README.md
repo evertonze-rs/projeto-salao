@@ -2,7 +2,7 @@
 
 Aplicativo em teste local com dois salões, eventos importados, financeiro, relatórios, portal do cliente e perfis de acesso.
 
-**Versão 0.4.3 — 02/10/2026:** executar `supabase/011_portal_perfis.sql` após 009 e depois `supabase/012_permissoes_detalhadas.sql` e `supabase/013_perfil_auditoria.sql` para ativar opções do portal e perfis configuráveis. O menu no computador é fixo e recolhível; os telefones têm máscara brasileira. Contador do cliente com abertura de 3,5 segundos, opção de pular e respeito a movimento reduzido.
+**Versão 0.5.0 — 02/10/2026:** executar `supabase/011_portal_perfis.sql` após 009 e depois `supabase/012_permissoes_detalhadas.sql` e `supabase/013_perfil_auditoria.sql` para ativar opções do portal e perfis configuráveis. O menu no computador é fixo e recolhível; os telefones têm máscara brasileira. Contador do cliente com abertura de 3,5 segundos, opção de pular e respeito a movimento reduzido.
 
 Veja [PUBLICAR.md](PUBLICAR.md) para publicar a versão de teste e configurar login/e-mail. Banco remoto e hospedagem ainda dependem da aplicação/configuração no painel pelo responsável.
 
@@ -99,3 +99,5 @@ O usuário autorizado define a própria senha em Primeiro acesso → Criar minha
 - Verificações: suíte `npm test`, `npm run build`, importação/limpeza em PostgreSQL isolado com `node scripts/testar_importacao.mjs`, e amostras PDF com `node scripts/validar_relatorios.mjs`. QA contém apenas dados fictícios em `private/qa-relatorios/`. A abertura de URL blob pela ferramenta de navegador de teste foi bloqueada; as páginas PDF foram renderizadas e conferidas diretamente.
 
 Atualização 0.4.1: aplicar `supabase/014_nome_cadastrado.sql` depois de 013 para priorizar o nome cadastrado em Usuários. Recarregue o aplicativo após executar. Os cadastros abrem por botão e a edição ocorre na própria linha.
+
+Versão 0.5.0: executar a migração 015 após 014 e configurar a URL de recuperação indicada em PUBLICAR.md. Inclui excluir usuários, esqueci minha senha e autorizar cliente ao editar evento.

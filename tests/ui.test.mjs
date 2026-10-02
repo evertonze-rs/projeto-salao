@@ -12,8 +12,8 @@ window.confirm=()=>true;window.scrollTo=()=>{};
 const React=await import('react');
 const {render,screen,fireEvent,waitFor,cleanup}=await import('@testing-library/react');
 const output=new URL('./.ui-runtime.mjs',import.meta.url);
-await build({stdin:{contents:"export {default as MinhaConta} from './src/MinhaConta.jsx';export {default as Identificacao} from './src/Identificacao.jsx';export {default as MenuConfiguracoes} from './src/MenuConfiguracoes.jsx';export {default as ConfigPortal} from './src/ConfigPortal.jsx';export {default as PortalCliente} from './src/PortalCliente.jsx';export {default as ContadorEvento} from './src/ContadorEvento.jsx';export {default as Perfis} from './src/Perfis.jsx';export {default as TelefoneInput} from './src/TelefoneInput.jsx';export {default as Agenda} from './src/Agenda.jsx';export {default as MinhaSenha} from './src/MinhaSenha.jsx';export {default as Usuarios} from './src/UsuariosV2.jsx';export {default as Evento} from './src/Evento.jsx';export {default as DataInput} from './src/DataInput.jsx';export {default as Catalogos} from './src/Catalogos.jsx';export {default as ConfigSaloes} from './src/IdentidadeSalao.jsx';",resolveDir:fileURLToPath(new URL('..',import.meta.url)),loader:'jsx'},bundle:true,platform:'node',format:'esm',packages:'external',outfile:fileURLToPath(output)});
-const {MinhaConta,Identificacao,MenuConfiguracoes,ConfigPortal,PortalCliente,ContadorEvento,Perfis,TelefoneInput,Agenda,MinhaSenha,Usuarios,Evento,DataInput,Catalogos,ConfigSaloes}=await import(output.href);
+await build({stdin:{contents:"export {default as Login} from './src/Login.jsx';export {default as RecuperarSenha} from './src/RecuperarSenha.jsx';export {default as MinhaConta} from './src/MinhaConta.jsx';export {default as Identificacao} from './src/Identificacao.jsx';export {default as MenuConfiguracoes} from './src/MenuConfiguracoes.jsx';export {default as ConfigPortal} from './src/ConfigPortal.jsx';export {default as PortalCliente} from './src/PortalCliente.jsx';export {default as ContadorEvento} from './src/ContadorEvento.jsx';export {default as Perfis} from './src/Perfis.jsx';export {default as TelefoneInput} from './src/TelefoneInput.jsx';export {default as Agenda} from './src/Agenda.jsx';export {default as MinhaSenha} from './src/MinhaSenha.jsx';export {default as Usuarios} from './src/UsuariosV2.jsx';export {default as Evento} from './src/Evento.jsx';export {default as DataInput} from './src/DataInput.jsx';export {default as Catalogos} from './src/Catalogos.jsx';export {default as ConfigSaloes} from './src/IdentidadeSalao.jsx';",resolveDir:fileURLToPath(new URL('..',import.meta.url)),loader:'jsx'},bundle:true,platform:'node',format:'esm',packages:'external',outfile:fileURLToPath(output)});
+const {Login,RecuperarSenha,MinhaConta,Identificacao,MenuConfiguracoes,ConfigPortal,PortalCliente,ContadorEvento,Perfis,TelefoneInput,Agenda,MinhaSenha,Usuarios,Evento,DataInput,Catalogos,ConfigSaloes}=await import(output.href);
 afterEach(cleanup);after(async()=>{await unlink(output);dom.window.close()});
 test('devolução salva com natureza própria e aparece negativa no histórico',async()=>{
  const f=fixture();render(React.createElement(Evento,{db:f.db,evento:f.event,gerente:true,onClose(){},onUpdate(){},onDeleted(){}}));
@@ -284,4 +284,43 @@ test('todos os catálogos editam na própria linha e preservam alterações se s
  assert.equal(screen.getByLabelText('Nome').value,'Alterado');
  fireEvent.click(screen.getByRole('button',{name:'Cancelar edição'}));
  }
+});
+
+test('esqueci senha envia link para a tela de recuperação sem pedir senha atual',async()=>{
+ let call;render(React.createElement(Login,{db:{auth:{resetPasswordForEmail:async(...args)=>{call=args;return {}}}}}));
+ fireEvent.click(screen.getByRole('button',{name:'Esqueci minha senha'}));assert.equal(screen.queryByLabelText('Senha'),null);
+ fireEvent.change(screen.getByLabelText('E-mail'),{target:{value:'teste@example.com'}});
+ fireEvent.click(screen.getByRole('button',{name:'Enviar link de recuperação'}));await screen.findByRole('status');
+ assert.equal(call[0],'teste@example.com');assert.equal(call[1].redirectTo,'http://localhost/?recuperar=1');
+});
+test('recuperação valida confirmação, preserva formulário em falha e encerra sessão ao concluir',async()=>{
+ let fail=true,calls=[],done=false;const db={auth:{getUser:async()=>({data:{user:{id:'u'}}}),updateUser:async p=>{calls.push(p);return fail?{error:{message:'erro'}}:{}},signOut:async()=>({})}};
+ render(React.createElement(RecuperarSenha,{db,session:{user:{id:'u'}},onDone:()=>done=true}));
+ fireEvent.change(screen.getByLabelText('Nova senha'),{target:{value:'nova12345'}});fireEvent.change(screen.getByLabelText('Confirmar nova senha'),{target:{value:'outra12345'}});
+ fireEvent.click(screen.getByRole('button',{name:'Salvar nova senha'}));await screen.findByRole('alert');assert.equal(calls.length,0);
+ fireEvent.change(screen.getByLabelText('Confirmar nova senha'),{target:{value:'nova12345'}});fireEvent.click(screen.getByRole('button',{name:'Salvar nova senha'}));await waitFor(()=>assert.equal(calls.length,1));await screen.findByText(/Não foi possível salvar a senha/);
+ assert.equal(screen.getByLabelText('Nova senha').value,'nova12345');fail=false;
+ fireEvent.click(screen.getByRole('button',{name:'Salvar nova senha'}));await screen.findByRole('status');assert.deepEqual(calls[1],{password:'nova12345'});
+ fireEvent.click(screen.getByRole('button',{name:'Voltar para entrar'}));await waitFor(()=>assert.equal(done,true));
+});
+test('link inválido não oferece formulário de redefinição',()=>{
+ render(React.createElement(RecuperarSenha,{db:{},session:{user:{}},invalid:true,onDone(){}}));
+ assert.ok(screen.getByRole('alert'));assert.equal(screen.queryByLabelText('Nova senha'),null);
+});
+test('excluir usuário exige confirmação e remove apenas a linha após sucesso',async()=>{
+ const f=fixture(),calls=[];f.db.rpc=async(name,args)=>{calls.push([name,args]);return {data:name==='listar_usuarios'?[{email:'p@local',nome:'Pessoa',perfil:'secretaria',saloes:['a'],ativo:true}]:null}};
+ render(React.createElement(Usuarios,{db:f.db,saloes:[{id:'a',nome:'Unidade A'}]}));
+ fireEvent.click(await screen.findByRole('button',{name:'Excluir usuário'}));assert.ok(!calls.some(([n])=>n==='excluir_usuario'));
+ fireEvent.click(screen.getByRole('button',{name:'Cancelar exclusão'}));assert.ok(screen.getByText('Pessoa'));
+ fireEvent.click(screen.getByRole('button',{name:'Excluir usuário'}));fireEvent.click(screen.getByRole('button',{name:'Confirmar exclusão'}));await screen.findByRole('status');
+ assert.ok(calls.some(([n,p])=>n==='excluir_usuario'&&p.p_email==='p@local'));assert.equal(screen.queryByText('Pessoa'),null);
+});
+test('editar evento pode criar acesso junto ao salvamento e mantém tela em conflito',async()=>{
+ const f=fixture();let payload,fail=true;f.db.rpc=(name,args)=>{payload={name,...args};return {single:async()=>fail?{error:{message:'E-mail já vinculado'}}:{data:{...f.event,...args.p_dados}}}};
+ render(React.createElement(Evento,{db:f.db,evento:f.event,gerente:true,administrar:true,onClose(){},onUpdate(){}}));
+ fireEvent.click(await screen.findByRole('button',{name:'Editar evento'}));
+ fireEvent.change(screen.getByLabelText('Email'),{target:{value:'cliente@example.com'}});fireEvent.click(screen.getByLabelText('Criar acesso do cliente com este e-mail'));
+ fireEvent.click(screen.getByRole('button',{name:'Salvar alterações'}));await screen.findByRole('alert');assert.equal(screen.getByLabelText('Email').value,'cliente@example.com');
+ assert.equal(payload.name,'salvar_evento_com_acesso');assert.equal(payload.p_criar_acesso,true);assert.equal(payload.p_dados.detalhes.Email,'cliente@example.com');
+ fail=false;fireEvent.click(screen.getByRole('button',{name:'Salvar alterações'}));await screen.findByRole('status');assert.equal(screen.queryByLabelText('Criar acesso do cliente com este e-mail'),null);
 });
