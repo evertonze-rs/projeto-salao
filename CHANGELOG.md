@@ -1,3 +1,9 @@
+## 0.6.1 — 02/10/2026
+
+- Modelos de e-mails de autenticação em português com identidade ExxEventos, tabelas e estilos inline compatíveis com clientes de e-mail.
+- Recuperação e confirmação com botão e link alternativo preservando ConfirmationURL do Supabase. Instruções de Site URL/Redirect URLs para corrigir retorno a localhost.
+- Templates precisam ser aplicados em Authentication → Emails → Templates; não são ativados pelo deploy do site. Entrega na caixa de entrada não é garantida pelo layout.
+
 ## 0.6.0 — 02/10/2026
 
 - Removida a frase de apresentação abaixo do título na tela de entrada.

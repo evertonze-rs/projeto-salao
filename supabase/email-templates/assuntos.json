@@ -1,0 +1,42 @@
+{
+  "recuperar-senha": {
+    "tela_supabase": "Reset password",
+    "assunto": "Redefina sua senha | ExxEventos",
+    "chave": "recovery"
+  },
+  "confirmar-cadastro": {
+    "tela_supabase": "Confirm sign up",
+    "assunto": "Confirme seu cadastro | ExxEventos",
+    "chave": "confirmation"
+  },
+  "convite": {
+    "tela_supabase": "Invite user",
+    "assunto": "Você recebeu um convite | ExxEventos",
+    "chave": "invite"
+  },
+  "link-acesso": {
+    "tela_supabase": "Magic link",
+    "assunto": "Seu link de acesso | ExxEventos",
+    "chave": "magic_link"
+  },
+  "alterar-email": {
+    "tela_supabase": "Change email address",
+    "assunto": "Confirme a alteração de e-mail | ExxEventos",
+    "chave": "email_change"
+  },
+  "reautenticacao": {
+    "tela_supabase": "Reauthentication",
+    "assunto": "Seu código de confirmação | ExxEventos",
+    "chave": "reauthentication"
+  },
+  "senha-alterada": {
+    "tela_supabase": "Password changed",
+    "assunto": "Sua senha foi alterada | ExxEventos",
+    "chave": "password_changed_notification"
+  },
+  "email-alterado": {
+    "tela_supabase": "Email address changed",
+    "assunto": "Seu e-mail foi alterado | ExxEventos",
+    "chave": "email_changed_notification"
+  }
+}
