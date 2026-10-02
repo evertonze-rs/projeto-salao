@@ -1,3 +1,9 @@
+## 0.6.0 — 02/10/2026
+
+- Removida a frase de apresentação abaixo do título na tela de entrada.
+- Slogan opcional por salão, com até 180 caracteres, exibido abaixo do nome nas fichas, relatórios, PDFs e impressão. Cabeçalho se ajusta à quebra de linhas.
+- Banco: executar 016 após 015. Validação: 47 testes e inspeção visual de PDF com slogan longo.
+
 ## 0.5.0 — 02/10/2026
 
 - Exclusão confirmada de usuários e autorizações, restrita a administradores de todos os vínculos do alvo e bloqueada para a própria conta. Preserva eventos, pagamentos e logs.

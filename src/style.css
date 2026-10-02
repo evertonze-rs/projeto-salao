@@ -62,3 +62,5 @@ fieldset{border:0;padding:0;margin:0;min-width:0}textarea{font:inherit;width:100
 @media(max-width:380px){.client-account-toolbar{gap:8px}.client-refresh>span:last-child{display:none}.app.client-portal .client-refresh{min-width:44px}}
 
 .user-delete-confirm{flex:0 0 100%;padding:16px;border:1px solid #a3372c;border-radius:10px;background:#fff7f5}.login-help{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+
+.document-brand .document-slogan{font-style:italic;color:#52635c;font-size:13px;margin:2px 0 8px;overflow-wrap:anywhere}

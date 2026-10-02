@@ -21,7 +21,7 @@ npm run build
 python scripts/empacotar_site.py
 ```
 
-O pacote atualizado da versão 0.5.0 será `private/publicacao/gestao-eventos-site.zip`. Contém **apenas dist**, com `index.html` na raiz. Para atualizar o site, gere um pacote novo. Não envie a pasta inteira do projeto, `.env.local`, `private` ou as planilhas.
+O pacote atualizado da versão 0.6.0 será `private/publicacao/gestao-eventos-site.zip`. Contém **apenas dist**, com `index.html` na raiz. Para atualizar o site, gere um pacote novo. Não envie a pasta inteira do projeto, `.env.local`, `private` ou as planilhas.
 
 ## 3. Hospedar no Cloudflare Pages
 
@@ -84,3 +84,5 @@ Atualização 0.4.1: aplicar `supabase/014_nome_cadastrado.sql` depois de 013 pa
 5. Em Editar evento, Criar acesso salva o evento e autoriza o e-mail em uma transação. E-mail já vinculado exige gerenciamento em Usuários; conflitos mantêm o formulário e não gravam parcialmente.
 
 GitHub: branch master publica automaticamente no projeto Pages conectado. Migrações SQL não são executadas pelo build.
+
+Atualização 0.6.0: executar `supabase/016_slogan_salao.sql` após 015. Em Configurações → Salões → Salões, preencher o slogan opcional. Ele aparece abaixo do nome nos documentos; vazio não ocupa espaço adicional.

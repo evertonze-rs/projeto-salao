@@ -127,8 +127,8 @@ test('tema tem prévia, cancelamento e gravação restrita ao salão escolhido',
  fireEvent.click(screen.getByLabelText('Roxo'));
  assert.equal(calls.length,0);fireEvent.click(screen.getByRole('button',{name:'Cancelar alteração'}));
  assert.equal(screen.getByLabelText('Azul').checked,true);
- fireEvent.click(screen.getByLabelText('Roxo'));fireEvent.click(screen.getByRole('button',{name:'Salvar dados'}));
- await screen.findByRole('status');assert.equal(calls[0].id,'a');assert.equal(calls[0].tema,'roxo');
+ fireEvent.click(screen.getByLabelText('Roxo'));fireEvent.change(screen.getByLabelText('Slogan do salão (opcional)'),{target:{value:'Momentos especiais'}});fireEvent.click(screen.getByRole('button',{name:'Salvar dados'}));
+ await screen.findByRole('status');assert.equal(calls[0].id,'a');assert.equal(calls[0].tema,'roxo');assert.equal(calls[0].slogan,'Momentos especiais');
  fireEvent.change(screen.getByLabelText('Salão'),{target:{value:'b'}});
  assert.equal(screen.getByLabelText('Verde').checked,true);
 });

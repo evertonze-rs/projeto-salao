@@ -38,16 +38,20 @@ export async function prepararPDF(model){
 }
 export function criarPDF(model){
  const doc=new jsPDF({unit:'mm',format:'a4',orientation:model.landscape?'landscape':'portrait'}),width=doc.internal.pageSize.getWidth(),height=doc.internal.pageSize.getHeight();
- doc.setProperties({title:model.title,subject:model.subtitle,author:model.salao,creator:'Projeto Salão'});
- let y=55;for(const section of model.sections){if((section.pageBreakBefore&&y>55)||y>height-42){doc.addPage();y=55}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,65,60);doc.text(txt(section.title),16,y);y+=4;
- autoTable(doc,{startY:y,head:[section.headers.map(txt)],body:(section.rows.length?section.rows:[section.headers.map((_,i)=>i===0?'Nenhum registro no período.':'')]).map(r=>r.map(txt)),theme:'striped',margin:{top:55,bottom:20,left:16,right:16},styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak',textColor:[45,55,60]},headStyles:{fillColor:[30,65,60],textColor:[255,255,255],fontStyle:'bold',fontSize:9},alternateRowStyles:{fillColor:[245,248,247]},rowPageBreak:'avoid'});y=doc.lastAutoTable.finalY+12;}
+ doc.setProperties({title:model.title,subject:model.subtitle,author:model.salao,creator:'Gestão de Eventos'});
+ const info=model.salaoInfo||{},offset=model.logoData?40:16;
+ doc.setFont('helvetica','italic');doc.setFontSize(9);
+ const slogan=String(info.slogan||'').trim(),sloganLines=slogan?doc.splitTextToSize(slogan,width-offset-16):[],headerExtra=sloganLines.length?5+sloganLines.length*4:0,bodyTop=55+headerExtra;
+ let y=bodyTop;for(const section of model.sections){if((section.pageBreakBefore&&y>bodyTop)||y>height-42){doc.addPage();y=bodyTop}doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,65,60);doc.text(txt(section.title),16,y);y+=4;
+ autoTable(doc,{startY:y,head:[section.headers.map(txt)],body:(section.rows.length?section.rows:[section.headers.map((_,i)=>i===0?'Nenhum registro no período.':'')]).map(r=>r.map(txt)),theme:'striped',margin:{top:bodyTop,bottom:20,left:16,right:16},styles:{font:'helvetica',fontSize:9,cellPadding:3,overflow:'linebreak',textColor:[45,55,60]},headStyles:{fillColor:[30,65,60],textColor:[255,255,255],fontStyle:'bold',fontSize:9},alternateRowStyles:{fillColor:[245,248,247]},rowPageBreak:'avoid'});y=doc.lastAutoTable.finalY+12;}
  const total=doc.getNumberOfPages(),emissao=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date());
  for(let i=1;i<=total;i++){
  doc.setPage(i);doc.setFillColor(30,65,60);doc.rect(0,0,width,3,'F');const info=model.salaoInfo||{},offset=model.logoData?40:16;
  if(model.logoData){const props=doc.getImageProperties(model.logoData),h=26,w=h*props.width/props.height;doc.addImage(model.logoData,props.fileType,16,7,Math.min(w,22),h,undefined,'FAST')}
  doc.setTextColor(30,65,60);doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(txt(model.salao),offset,13);
- doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80);const contact=[info.endereco,info.cnpj?`CNPJ: ${info.cnpj}`:'',[info.telefone,info.email].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');doc.text(doc.splitTextToSize(txt(contact),width-offset-16).slice(0,2),offset,19);
- doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,65,60);doc.text(doc.splitTextToSize(txt(model.title),width-32).slice(0,1),16,35);doc.setFontSize(12);doc.text(doc.splitTextToSize(txt(model.subtitle),width-32).slice(0,2),16,43);
+ if(sloganLines.length){doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(80);doc.text(sloganLines,offset,19,{lineHeightFactor:1.25})}
+ doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80);const contact=[info.endereco,info.cnpj?`CNPJ: ${info.cnpj}`:'',[info.telefone,info.email].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');doc.text(doc.splitTextToSize(txt(contact),width-offset-16).slice(0,2),offset,19+headerExtra);
+ doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,65,60);doc.text(doc.splitTextToSize(txt(model.title),width-32).slice(0,1),16,35+headerExtra);doc.setFontSize(12);doc.text(doc.splitTextToSize(txt(model.subtitle),width-32).slice(0,2),16,43+headerExtra);
  doc.setFont('helvetica','normal');doc.setDrawColor(210);doc.line(16,height-16,width-16,height-16);doc.setFontSize(8);doc.setTextColor(95);doc.text(`Emitido em ${emissao} · Uso interno`,16,height-10);doc.text(`${i} / ${total}`,width-16,height-10,{align:'right'});
  }
  return doc;

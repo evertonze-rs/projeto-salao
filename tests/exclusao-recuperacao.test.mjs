@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 test('exclusão protege próprio usuário e outros salões; edição e acesso são atômicos',async()=>{
  const db=new PGlite();try{
  await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,email text unique);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated;grant execute on function auth.uid() to authenticated;`);
- for(const f of (await readdir(new URL('../supabase/',import.meta.url))).filter(f=>/^(00[1-9]|01[1-5])_/.test(f)).sort())await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+ for(const f of (await readdir(new URL('../supabase/',import.meta.url))).filter(f=>/^(00[1-9]|01[1-6])_/.test(f)).sort())await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
  const [a,b]=(await db.query('select id from saloes order by nome')).rows.map(r=>r.id);
  const admin='00000000-0000-4000-8000-000000000001',limited='00000000-0000-4000-8000-000000000002',client='00000000-0000-4000-8000-000000000003',staff='00000000-0000-4000-8000-000000000004';
  await db.exec(`insert into auth.users values('${admin}','admin@teste.local'),('${limited}','limited@teste.local'),('${client}','client@teste.local'),('${staff}','staff@teste.local');insert into membros(usuario_id,salao_id,perfil) values('${admin}','${a}','gerente'),('${admin}','${b}','gerente'),('${limited}','${a}','gerente'),('${staff}','${a}','secretaria'),('${staff}','${b}','secretaria');set role authenticated;set request.jwt.claim.sub='${admin}';`);
@@ -16,7 +16,7 @@ test('exclusão protege próprio usuário e outros salões; edição e acesso s�
  await assert.rejects(db.query('select salvar_evento_com_acesso($1,$2,true)',[ev.id,JSON.stringify({...payload,cliente:'Não salvar'})]));
  assert.equal((await db.query('select cliente from eventos where id=$1',[ev.id])).rows[0].cliente,'Depois');
  await assert.rejects(db.query('select excluir_usuario($1)',['admin@teste.local']));
- await db.exec(`set request.jwt.claim.sub='${limited}'`);await assert.rejects(db.query('select excluir_usuario($1)',['staff@teste.local']));
+ await db.exec(`set request.jwt.claim.sub='${limited}'`);await db.query('update saloes set slogan=$1 where id=$2',['Slogan A',a]);assert.equal((await db.query('update saloes set slogan=$1 where id=$2 returning id',['Não permitido',b])).rows.length,0);await assert.rejects(db.query('select excluir_usuario($1)',['staff@teste.local']));
  await db.exec(`set request.jwt.claim.sub='${staff}'`);await assert.rejects(db.query('select excluir_usuario($1)',['client@teste.local']));
  await assert.rejects(db.query('select salvar_evento_com_acesso($1,$2,true)',[ev.id,JSON.stringify({...payload,detalhes:{Email:'outro@teste.local'}})]));
  await db.exec(`set request.jwt.claim.sub='${admin}'`);await db.query('select excluir_usuario($1)',['client@teste.local']);
