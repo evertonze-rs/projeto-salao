@@ -1,0 +1,47 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('logs registram autor, antes e depois; isolam salões e não podem ser adulterados pelo aplicativo',async()=>{
+ const db=new PGlite();try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,email text unique);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated;grant execute on function auth.uid() to authenticated;`);
+ for(const f of (await readdir(new URL('../supabase/',import.meta.url))).filter(f=>/^(00[1-9]|01[1-3])_/.test(f)).sort())await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+ const [a,b]=(await db.query('select id from saloes order by nome')).rows.map(r=>r.id);
+ const admin='00000000-0000-4000-8000-000000000001',staff='00000000-0000-4000-8000-000000000002',limited='00000000-0000-4000-8000-000000000003';
+ await db.exec(`insert into auth.users values('${admin}','admin@teste.local'),('${staff}','staff@teste.local'),('${limited}','limited@teste.local');insert into membros(usuario_id,salao_id,perfil,nome) values('${admin}','${a}','gerente','Everton'),('${admin}','${b}','gerente','Everton'),('${staff}','${a}','secretaria','Equipe'),('${limited}','${a}','gerente','Limitado');set role authenticated;set request.jwt.claim.sub='${admin}'`);
+ assert.equal((await db.query('select meu_perfil() p')).rows[0].p.nome,'Everton');
+ const event=(await db.query(`insert into eventos(salao_id,cliente,data,tipo) values('${a}','Antes','2099-01-01','15 Anos') returning id`)).rows[0].id;
+ await db.exec(`update eventos set cliente='Depois' where id='${event}'`);
+ const log=(await db.query("select * from logs_alteracoes where tabela='eventos' and acao='UPDATE'")).rows[0];
+ assert.equal(log.autor,'Everton');assert.equal(log.usuario_id,admin);assert.equal(log.antes.cliente,'Antes');assert.equal(log.depois.cliente,'Depois');assert.deepEqual(log.campos,['cliente']);
+ await assert.rejects(db.exec('delete from logs_alteracoes'));await assert.rejects(db.exec("update logs_alteracoes set autor='Outro'"));
+ await assert.rejects(db.exec("insert into logs_alteracoes(autor,tabela,acao,registro,campos) values('Outro','eventos','UPDATE','1','{}')"));
+ await db.exec(`update saloes set telefone='(51) 3333-4444' where id='${b}'`);
+ const photo='data:image/jpeg;base64,YWJj';
+ await db.query('select salvar_meu_perfil($1,$2)',['Meu nome',photo]);
+ const photoLog=(await db.query("select * from logs_alteracoes where tabela='perfil_pessoal'")).rows[0];
+ assert.equal(photoLog.depois.foto,'Foto cadastrada');assert.ok(!JSON.stringify(photoLog).includes(photo));
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ assert.equal((await db.query('select * from logs_alteracoes')).rows.length,0);
+ assert.equal((await db.query('select * from perfil_pessoal')).rows.length,0);
+ await db.query('select salvar_meu_perfil($1,$2)',['Equipe atualizada','']);
+ assert.equal((await db.query('select meu_perfil() p')).rows[0].p.nome,'Equipe atualizada');
+ await assert.rejects(db.query('select salvar_meu_perfil($1,$2)',['Equipe','https://externo.invalid/foto.jpg']));
+ await assert.rejects(db.query('update perfil_pessoal set nome=$1 where usuario_id=$2',['Invadido',admin]));
+ await db.exec(`set request.jwt.claim.sub='${limited}'`);
+ const limitedLogs=(await db.query('select * from logs_alteracoes')).rows;
+ assert.ok(limitedLogs.length>0);assert.ok(limitedLogs.every(l=>l.salao_id===a));
+ await db.exec(`set request.jwt.claim.sub='${admin}';select excluir_evento('${event}');`);
+ assert.equal((await db.query("select count(*) n from logs_alteracoes where tabela='eventos' and acao='DELETE'")).rows[0].n,1);
+ assert.equal((await db.query("select count(*) n from logs_alteracoes where tabela='eventos' and registro=$1",[event])).rows[0].n,3);
+ await db.exec('reset role');
+ await db.exec(await readFile(new URL('../supabase/014_nome_cadastrado.sql',import.meta.url),'utf8'));
+ await db.exec(`set role authenticated;set request.jwt.claim.sub='${staff}'`);
+ assert.equal((await db.query('select meu_perfil() p')).rows[0].p.nome,'Equipe');
+ await db.query('select salvar_meu_perfil($1,$2)',['Apelido','']);
+ assert.equal((await db.query('select meu_perfil() p')).rows[0].p.nome_cadastro,'Equipe');
+ await db.exec(`reset role;update membros set nome='Nome corrigido' where usuario_id='${staff}';set role authenticated`);
+ assert.equal((await db.query('select meu_perfil() p')).rows[0].p.nome,'Nome corrigido');
+ await db.exec('set role anon');await assert.rejects(db.exec('select * from logs_alteracoes'));await assert.rejects(db.exec('select meu_perfil()'));
+ }finally{await db.close()}
+});

@@ -1,0 +1,53 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {alterarPermissao,novoPerfil} from '../src/permissoes.mjs';
+test('flags dependentes habilitam leitura e limpam alterações ao revogá-la',()=>{
+ const p=alterarPermissao(novoPerfil(),'financeiro',true);
+ assert.equal(p.financeiro_visualizar,true);assert.equal(p.eventos_visualizar,true);
+ const q=alterarPermissao(p,'eventos_visualizar',false);
+ assert.equal(q.financeiro,false);assert.equal(q.financeiro_visualizar,false);
+});
+test('leitura financeira não autoriza gravação; eventos podem ter criação, edição e exclusão separadas',async()=>{
+ const db=new PGlite();try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,email text unique);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated;grant execute on function auth.uid() to authenticated;`);
+ for(const f of (await readdir(new URL('../supabase/',import.meta.url))).filter(f=>/^(00[1-9]|011|012)_/.test(f)).sort())await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+ const [a,b]=(await db.query('select id from saloes order by nome')).rows.map(r=>r.id);
+ const admin='00000000-0000-4000-8000-000000000001',staff='00000000-0000-4000-8000-000000000002';
+ await db.exec(`insert into auth.users values('${admin}','admin@teste.local'),('${staff}','staff@teste.local');insert into membros(usuario_id,salao_id,perfil) values('${admin}','${a}','gerente'),('${admin}','${b}','gerente');set role authenticated;set request.jwt.claim.sub='${admin}'`);
+ const ev=(await db.query(`insert into eventos(salao_id,cliente,data,tipo) values('${a}','Cliente','2099-01-01','15 Anos') returning id`)).rows[0].id;
+ await db.exec(`insert into pagamentos(evento_id,salao_id,data,valor) values('${ev}','${a}','2026-10-01',50)`);
+ const flags={eventos_visualizar:true,financeiro_visualizar:true};
+ const cod=(await db.query('select salvar_perfil_detalhado(null,$1,$2) codigo',['Leitura',JSON.stringify(flags)])).rows[0].codigo;
+ await db.query('select salvar_usuario($1,$2,$3,$4,null,true,null)',['staff@teste.local','Equipe',cod,[a]]);
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ assert.equal((await db.query('select * from pagamentos')).rows.length,1);
+ assert.equal((await db.query('update pagamentos set valor=100 returning id')).rows.length,0);
+ await assert.rejects(db.query(`insert into pagamentos(evento_id,salao_id,data,valor) values('${ev}','${a}','2026-10-01',10)`));
+ await assert.rejects(db.query('select salvar_servicos_evento($1,$2)',[ev,'[]']));
+ await assert.rejects(db.query('select excluir_evento($1)',[ev]));
+ assert.equal((await db.query('select * from tarefas')).rows.length,0);
+ await assert.rejects(db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Invasor','{"administrar":true}']));
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ await assert.rejects(db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Inválido','{"financeiro":true}']));
+ await assert.rejects(db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Inválido','{"outro":true}']));
+ await db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Cadastro','{"eventos_visualizar":true,"eventos_criar":true}']);
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ const newEv=(await db.query(`insert into eventos(salao_id,cliente,data,tipo) values('${a}','Novo','2099-01-02','15 Anos') returning id`)).rows[0].id;
+ assert.ok(newEv);assert.equal((await db.query(`update eventos set cliente='Negado' where id='${newEv}' returning id`)).rows.length,0);
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ await db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Edição','{"eventos_visualizar":true,"eventos_editar":true}']);
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ assert.equal((await db.query(`update eventos set cliente='Permitido' where id='${newEv}' returning id`)).rows.length,1);
+ await assert.rejects(db.query('select excluir_evento($1)',[newEv]));
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ await db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Exclusão','{"eventos_visualizar":true,"eventos_excluir":true}']);
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);await db.query('select excluir_evento($1)',[newEv]);
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ await db.query('select salvar_perfil_detalhado($1,$2,$3)',[cod,'Sem acesso','{}']);
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ assert.equal((await db.query('select * from eventos')).rows.length,0);assert.equal((await db.query('select * from pagamentos')).rows.length,0);
+ assert.equal((await db.query('select * from saloes')).rows.length,1);
+ }finally{await db.close()}
+});

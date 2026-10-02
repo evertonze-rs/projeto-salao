@@ -4,3 +4,8 @@ dist/
 private/
 
 tests/.ui-runtime.mjs
+
+# Rotinas locais de importação com referências a dados reais
+scripts/gerar_importacao.py
+scripts/previa_importacao.py
+scripts/testar_importacao.mjs

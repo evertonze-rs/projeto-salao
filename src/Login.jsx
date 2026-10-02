@@ -1,0 +1,12 @@
+import React,{useState} from 'react';
+export default function Login({db}){
+ const [mode,M]=useState('login'),[busy,B]=useState(false),[error,E]=useState(''),[notice,N]=useState('');
+ async function submit(e){e.preventDefault();const f=new FormData(e.currentTarget);B(true);E('');N('');try{
+  const email=f.get('email').trim(),password=f.get('senha');
+  if(mode==='signup'&&password!==f.get('confirmar'))throw Error('As senhas precisam ser iguais.');
+  const result=mode==='signup'?await db.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin}}):await db.auth.signInWithPassword({email,password});
+  if(result.error)throw Error(mode==='signup'?'Não foi possível criar a conta. Se já possui senha, use Entrar.':'Confira seu e-mail e senha.');
+  if(mode==='signup'&&!result.data.session)N('Confira seu e-mail para confirmar o cadastro. O acesso aos salões depende da autorização da administração.');
+ }catch(err){E(err.message||'Não foi possível conectar. Tente novamente.')}finally{B(false)}}
+ return <main className="login"><section className="brand"><span className="eyebrow">EXXCELÊNCIA · EXXPLÊNDIDO</span><h1>Cada detalhe.<br/>Um grande evento.</h1><p>Um só lugar para acompanhar a organização dos seus salões.</p></section><section className="login-card"><span className="eyebrow">GESTÃO DE EVENTOS</span><h2>{mode==='signup'?'Criar minha senha':'Bem-vinda de volta'}</h2><p>{mode==='signup'?'Use o mesmo e-mail autorizado pela administração.':'Entre com seu acesso autorizado.'}</p><form onSubmit={submit}><fieldset disabled={busy}><label>E-mail<input name="email" type="email" autoComplete="username" required/></label><label>Senha<input name="senha" type="password" minLength={mode==='signup'?8:undefined} autoComplete={mode==='signup'?'new-password':'current-password'} required/></label>{mode==='signup'&&<label>Confirmar senha<input name="confirmar" type="password" autoComplete="new-password" required/></label>}{error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="success">{notice}</p>}<button>{busy?'Aguarde…':mode==='signup'?'Criar minha senha':'Entrar no salão'}</button></fieldset></form><button className="back" disabled={busy} onClick={()=>{M(mode==='signup'?'login':'signup');E('');N('')}}>{mode==='signup'?'Já tenho senha · Entrar':'Primeiro acesso · Criar minha senha'}</button></section></main>
+}

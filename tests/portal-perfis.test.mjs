@@ -1,0 +1,67 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {formatarTelefone} from '../src/telefone.mjs';
+import {diasParaEvento} from '../src/contador.mjs';
+test('telefone fixo, celular e colagem com DDI; contador entre meses e anos',()=>{
+ assert.equal(formatarTelefone('5133334444'),'(51) 3333-4444');
+ assert.equal(formatarTelefone('51988887777'),'(51) 98888-7777');
+ assert.equal(formatarTelefone('+55 (51) 98888-7777'),'(51) 98888-7777');
+ assert.equal(formatarTelefone(''),'');
+ assert.equal(diasParaEvento('2027-01-01','2026-12-31'),1);
+ assert.equal(diasParaEvento('2026-10-02','2026-10-02'),0);
+ assert.equal(diasParaEvento('2026-10-01','2026-10-02'),-1);
+});
+test('portal filtra no servidor; perfis dinâmicos respeitam RLS e não elevam privilégios',async()=>{
+ const db=new PGlite();try{
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,email text unique);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to authenticated;grant execute on function auth.uid() to authenticated;`);
+ for(const f of (await readdir(new URL('../supabase/',import.meta.url))).filter(f=>/^00[1-9]_/.test(f)||f.startsWith('011_')).sort())await db.exec(await readFile(new URL('../supabase/'+f,import.meta.url),'utf8'));
+ const [a,b]=(await db.query('select id from saloes order by nome')).rows.map(r=>r.id);
+ const admin='00000000-0000-4000-8000-000000000001',client='00000000-0000-4000-8000-000000000002',staff='00000000-0000-4000-8000-000000000003',limited='00000000-0000-4000-8000-000000000004';
+ await db.exec(`insert into auth.users values('${admin}','admin@teste.local'),('${client}','client@teste.local'),('${staff}','staff@teste.local'),('${limited}','limited@teste.local');insert into membros(usuario_id,salao_id,perfil) values('${admin}','${a}','gerente'),('${admin}','${b}','gerente'),('${limited}','${a}','gerente');set role authenticated;set request.jwt.claim.sub='${admin}'`);
+ const event=(await db.query(`insert into eventos(salao_id,cliente,data,tipo,detalhes) values('${a}','Cliente','2099-01-01','15 Anos','{"segredo":"nunca expor"}') returning id`)).rows[0].id;
+ await db.exec(`update itens_evento set valor_unitario=100 where evento_id='${event}' and categoria='pacote';insert into pagamentos(evento_id,salao_id,data,valor,detalhe,pago_para) values('${event}','${a}','2026-10-01',50,'segredo interno','Funcionario interno')`);
+ await db.query('select salvar_usuario($1,$2,$3,$4,$5,$6,$7)',['client@teste.local','Cliente','cliente',[],event,true,null]);
+ await db.exec(`set request.jwt.claim.sub='${client}'`);
+ const summary=async()=>(await db.query('select meu_evento_resumido() data')).rows[0].data;
+ const hidden=await summary();assert.equal(hidden.financeiro,undefined);assert.equal(hidden.pagamentos,undefined);assert.equal(hidden.itens,undefined);
+ assert.equal(hidden.contador,true);assert.equal(hidden.detalhes,undefined);
+ for(const t of ['eventos','pagamentos','itens_evento','portal_config','perfis_acesso'])assert.equal((await db.query(`select * from ${t}`)).rows.length,0);
+ await assert.rejects(db.query('select salvar_perfil(null,$1,true,true,true,true)',['Invasor']));
+ await db.exec(`set request.jwt.claim.sub='${admin}';update portal_config set itens=true,pagamentos=true,progresso=false,checklist=true,detalhes=true where salao_id='${a}';set request.jwt.claim.sub='${client}'`);
+ const visible=await summary();assert.equal(visible.itens.length,1);assert.equal(visible.itens[0].total,undefined);assert.equal(visible.pagamentos[0].valor,50);assert.equal(visible.pagamentos[0].detalhe,undefined);assert.equal(visible.pagamentos[0].pago_para,undefined);assert.equal(visible.tarefas_total,undefined);assert.ok(Array.isArray(visible.tarefas));
+ assert.ok(!JSON.stringify(visible).includes('segredo'));
+ await db.exec(`set request.jwt.claim.sub='${admin}';update portal_config set valores=true where salao_id='${a}';set request.jwt.claim.sub='${client}'`);
+ assert.equal((await summary()).financeiro.pago,50);
+ await db.exec(`set request.jwt.claim.sub='${limited}'`);await assert.rejects(db.query('select salvar_perfil(null,$1,true,false,false,false)',['Restrito']));
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ const code=(await db.query('select salvar_perfil(null,$1,true,false,false,false) codigo',['Organização'])).rows[0].codigo;
+ await db.query('select salvar_usuario($1,$2,$3,$4,$5,$6,$7)',['staff@teste.local','Equipe',code,[a],null,true,null]);
+ await assert.rejects(db.query('select excluir_perfil($1)',[code]));
+ await assert.rejects(db.query('select salvar_perfil($1,$2,false,false,false,false)',['gerente','Sem acesso']));
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ assert.equal((await db.query('select * from saloes')).rows.length,1);
+ assert.equal((await db.query('select * from pagamentos')).rows.length,0);
+ assert.equal((await db.query('select * from itens_evento')).rows.length,0);
+ const created=(await db.query(`insert into eventos(salao_id,cliente,data,tipo) values('${a}','Novo','2099-02-01','15 Anos') returning id`)).rows[0].id;
+ assert.ok(created); // Catalog snapshots must be seeded even without financial permission.
+ assert.ok((await db.query(`select * from tarefas where evento_id='${created}'`)).rows.length>0);
+ assert.equal((await db.query(`update tarefas set concluida=true where evento_id='${created}' returning id`)).rows.length,0);
+ await assert.rejects(db.query('select salvar_servicos_evento($1,$2)',[created,'[]']));
+ await assert.rejects(db.query('select salvar_usuario($1,$2,$3,$4,$5,$6,$7)',['staff@teste.local','Equipe','gerente',[a],null,true,null]));
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ await db.query('select salvar_perfil($1,$2,false,true,true,false)',[code,'Financeiro e tarefas']);
+ await db.exec(`set request.jwt.claim.sub='${staff}'`);
+ assert.ok((await db.query('select * from pagamentos')).rows.length>0);
+ assert.equal((await db.query(`update eventos set cliente='Proibido' where id='${created}' returning id`)).rows.length,0);
+ assert.ok((await db.query(`update tarefas set concluida=true where evento_id='${created}' returning id`)).rows.length>0);
+ await db.exec(`set request.jwt.claim.sub='${admin}'`);
+ await db.query('select salvar_usuario($1,$2,$3,$4,$5,$6,$7)',['staff@teste.local','Equipe','secretaria',[a],null,true,null]);
+ await db.query('select excluir_perfil($1)',[code]);
+ await db.exec(`update portal_config set pagamentos=false,valores=false,itens=false where salao_id='${a}';set request.jwt.claim.sub='${client}'`);
+ assert.equal((await summary()).pagamentos,undefined);
+ await db.exec(`reset role;update acessos_clientes set ativo=false;set role authenticated;set request.jwt.claim.sub='${client}'`);
+ assert.equal(await summary(),null);
+ }finally{await db.close()}
+});

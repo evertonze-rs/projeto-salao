@@ -1,6 +1,10 @@
-# Projeto Salão
+# Gestão de Eventos
 
-Primeira versão local. Login Supabase, salões autorizados, consulta e cadastro de eventos. Não é ainda a versão completa de produção.
+Aplicativo em teste local com dois salões, eventos importados, financeiro, relatórios, portal do cliente e perfis de acesso.
+
+**Versão 0.4.3 — 02/10/2026:** executar `supabase/011_portal_perfis.sql` após 009 e depois `supabase/012_permissoes_detalhadas.sql` e `supabase/013_perfil_auditoria.sql` para ativar opções do portal e perfis configuráveis. O menu no computador é fixo e recolhível; os telefones têm máscara brasileira. Contador do cliente com abertura de 3,5 segundos, opção de pular e respeito a movimento reduzido.
+
+Veja [PUBLICAR.md](PUBLICAR.md) para publicar a versão de teste e configurar login/e-mail. Banco remoto e hospedagem ainda dependem da aplicação/configuração no painel pelo responsável.
 
 ## Banco
 
@@ -20,14 +24,12 @@ Node 22.12 ou superior. Executar `npm install`, `npm test`, `npm run build` e `n
 - Banco inicial de itens, pagamentos e tarefas, com valores decimais exatos e vínculos por salão.
 - Testes locais em PostgreSQL/PGlite: isolamento, leitura financeira, proibição de autoelevação e integridade dos vínculos.
 
-## Ainda pendente
+## Ainda pendente no ambiente real
 
-- Executar e validar a migração no Supabase real e cadastrar a primeira gerente.
-- Revisão visual e teste autenticado das novas telas com a conta de teste.
-- Importação com reconciliação e tratamento dos registros auxiliares divergentes.
-- Histórico de alterações, exportações, recuperação de senha e política de cópias de segurança.
-- Portal do contratante com expiração, contratos e validação final dos perfis.
-- Publicação, testes completos de navegação e revisão visual em celular e computador.
+- Aplicar as atualizações 011, 012 e 013 e testar com contas de equipe e cliente.
+- Publicar o build, cadastrar URLs no Auth e configurar SMTP para primeiros acessos de clientes externos.
+- Recuperação de senha esquecida, contratos e política de cópias de segurança.
+- Conferência de login, PDF e permissões na versão publicada.
 
 As planilhas originais não foram alteradas. Nenhum dado delas foi incluído no pacote público do aplicativo. Acesso externo não está publicado nesta etapa.
 
@@ -76,3 +78,24 @@ A aba Pagamentos abre com Novo pagamento e histórico. Cada registro tem Editar,
 Configurações gerais → Salões permite escolher e visualizar um tema antes de salvar. Exxcelência inicia azul e Exxplêndido verde, com roxo e terracota também disponíveis. A escolha é persistida no banco por salão e aplicada quando a unidade é selecionada. A alteração do nome e outros dados do salão não está habilitada nesta etapa. Apenas gerentes autorizadas podem mudar o tema, com permissão de atualização restrita à coluna tema.
 
 Testes adicionais cobrem criação/edição de pagamento fora da edição do evento, manutenção dos novos campos e detalhes, cancelamento de formulário, prévia/gravação de tema, isolamento entre salões e permissões no banco.
+# Atualização 007 — devoluções, usuários e importação
+
+Execute `supabase/007_devolucoes_usuarios.sql` no SQL Editor depois da atualização 006. Os pagamentos existentes continuam como recebimentos. Devoluções usam valor positivo com natureza `devolucao`, exibida negativa e descontada do recebido líquido. Ao cancelar um serviço, atualize também o valor contratado na aba Serviços; registrar uma devolução não altera o contrato automaticamente.
+
+Configurações gerais → Usuários permite autorizar e-mail, nome, perfil e salão, editar, suspender e definir validade até o fim do dia em São Paulo. Para liberar dois salões, autorize o mesmo e-mail em cada um. Somente gerente ativo do salão administra esses acessos; não pode alterar o próprio vínculo. Dono e secretária mantêm consulta de eventos/detalhes/tarefas; financeiro e administração continuam exclusivos de gerente. Acesso de contratantes por evento ainda não está implementado.
+
+O usuário autorizado define a própria senha em Primeiro acesso → Criar minha senha. Mantenha confirmação de e-mail no Supabase e configure a URL do aplicativo em Authentication → URL Configuration e o envio de e-mails antes de disponibilizar cadastros a terceiros. O serviço padrão de e-mail do Supabase pode restringir destinatários; não foi testado envio real. Nenhuma chave administrativa vai para o navegador. Autorizações são mantidas em tabela protegida, sem confiar em metadados enviados no cadastro. Referências: https://supabase.com/docs/reference/javascript/auth-signup e https://supabase.com/docs/guides/auth/managing-user-data.
+
+`scripts/previa_importacao.py` lê as planilhas originais, sem modificá-las. `scripts/gerar_importacao.py` prepara SQL privado em `private/previa-importacao/Importar-eventos.sql`; `node scripts/testar_importacao.mjs` executa esse SQL em PostgreSQL local isolado e verifica totais/reexecução. Nada é enviado automaticamente ao Supabase. O SQL importa 201 eventos e 1.121 lançamentos (5 devoluções), ignora parcelas sem valor e linhas sem evento, corrige o tipo das linhas solicitadas e o vínculo de Detalhes da Mirella. Sofia usa os dados da aba Eventos, linha 167: Sabrina e 120 convidados. A ficha de Detalhes correspondente vem da linha 169; a duplicata da linha 167 permanece apenas na origem local, sem gerar registro adicional. O script registra a origem de cada evento; não sobrescreve uma importação já realizada nem duplica eventos em reexecução. Para evitar vínculos incorretos, um evento manual com mesmo nome/data aborta a transação para revisão.
+# Atualizações 008–010 — agenda, clientes, identidade e documentos
+
+- Execute `008_clientes_multissalao.sql` se ainda não aplicada, depois `009_identidade_contatos.sql`. A 009 cadastra o logo fornecido do Exxcelência, habilita nome/endereço/CNPJ/telefone/e-mail/logo editáveis, agrupa profissionais repetidos pelo nome normalizado e adiciona criação atômica de evento com autorização do cliente.
+- A agenda inicia em hoje/próximos eventos, permite passados/todos e filtra pelo mês do calendário. O calendário acompanha a rolagem normal.
+- A marca é Gestão de Eventos / RiffByte Tecnologia. Assets fornecidos ficam em `public/brand`; a tela Sobre informa versão 0.2.0. Nenhum endereço, CNPJ ou contato real foi inventado: devem ser preenchidos nas configurações.
+- Usuários internos recebem um ou dois salões em uma única gravação. Clientes recebem um evento, com resumo por RPC e nenhum acesso direto às tabelas internas. A validade sugerida é data do evento + 1 dia, inclusive; prevalece a menor data entre a validade configurada e esse limite. A opção no novo evento autoriza o e-mail; não cria uma senha previsível nem chama a API administrativa no navegador. A identidade Auth é concluída no primeiro acesso com senha escolhida pelo cliente e confirmação de e-mail. Envio SMTP/URLs de confirmação continua dependente da configuração do Supabase.
+- Troca de senha exige validação da senha atual e usa o Supabase Auth. A conta de quem administra não troca o próprio perfil por essa tela.
+- Exibir ficha tem seleções reativas de seções. O PDF é um documento A4 gerado por jsPDF/AutoTable, não captura de tela; checklist e resumo financeiro começam em folhas separadas. Cabeçalho recebe logo e dados do salão, nome e data do evento. Prévia abre outra aba. A leitura do logo é redimensionada no navegador para não inserir a imagem original de 20 megapixels em cada documento. Relatórios incluem agenda, tarefas, financeiro e profissionais (eventos distintos, por data, sem Particular/cancelados).
+- `010_remover_testes_anteriores.sql` remove somente registros sem `_origem` criados antes da primeira importação, guardando cópia integral em tabela protegida. Aborta se menos de 201 eventos importados forem encontrados ou se houver mais de 20 candidatos. Não apaga eventos importados nem cadastros posteriores. Esse SQL precisa ser executado no Supabase; não foi aplicado remotamente pelo assistente.
+- Verificações: suíte `npm test`, `npm run build`, importação/limpeza em PostgreSQL isolado com `node scripts/testar_importacao.mjs`, e amostras PDF com `node scripts/validar_relatorios.mjs`. QA contém apenas dados fictícios em `private/qa-relatorios/`. A abertura de URL blob pela ferramenta de navegador de teste foi bloqueada; as páginas PDF foram renderizadas e conferidas diretamente.
+
+Atualização 0.4.1: aplicar `supabase/014_nome_cadastrado.sql` depois de 013 para priorizar o nome cadastrado em Usuários. Recarregue o aplicativo após executar. Os cadastros abrem por botão e a edição ocorre na própria linha.
